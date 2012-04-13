@@ -1,0 +1,13 @@
+ _____ _____ __ __ _____ _____ _____ _____ _____ _____ 
+|   __|  |  |  |  |  |  |     |  _  |  _  |   __| __  |
+|__   |    -|_   _|     |  |  |   __|   __|   __|    -|
+|_____|__|__| |_| |__|__|_____|__|  |__|  |_____|__|__|
+
+RC Double proppeler helicopter project controlled by a Playstation 2 controller over a XBee transmission
+
+You will need the PSX_lib developped by Bill Porter (http://www.billporter.info/)
+
+Needed : 
+	* Arduino Nano for the controller
+	* Arduino Mega for the helicopter core
+	* Playstation 2 controller
