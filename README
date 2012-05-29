@@ -11,3 +11,7 @@ Needed :
 	* Arduino Nano for the controller
 	* Arduino Mega for the helicopter core
 	* Playstation 2 controller
+
+Commit 05/29/12:
+ 	+ Throttle command frame (PWN)
+        + Modification of the PWN ports
