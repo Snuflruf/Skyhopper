@@ -2,157 +2,184 @@
 
 //Incoming serial data
 int incomingByte = 0;
-//bytes number in the received send
+//Bytes number in the received send
 int packet=0;
-//Quantum to convert 0~255 to 0~180
-//float quantum = 180.0/255.0;
+//Average value initialisation for the frame
 int bytes[]={125,125,125,125,0,0,0,0,0};
+//PWM 
 Servo rps,lps,xFPV,yFPV,motorL,motorR; 
-int rpsPos=90, lpsPos=90,xFPVPos=90,yFPVPos=90, gaz = 0, boot=0;
+//Pitch servos initialisation
+int rpsPos=90, lpsPos=90;
+//FPV servos
+int xFPVPos=90,yFPVPos=90;
+//gas values
+int gas = 0, gasMax= 100, gasMin= 0, gasNeutral=60;
+int LX=90, LY=90, RX=90, RY=90, L1=0, L2=0, R1=0, R2=0, EMERG=0;
+int emergFlag=1;
+
 void setup() {
-        Serial.begin(57600);
-        rps.attach(11);
-        lps.attach(10);
-        rps.write(90);
-        lps.write(90);
-        xFPV.attach(8);
-        yFPV.attach(9);
-        xFPV.write(90);
-        yFPV.write(90);
-        motorL.attach(12);
-        motorR.attach(13);
-        motorL.write(0);
-        motorR.write(0);    
+   //Speed transmission initialisation
+   Serial.begin(57600);
+   //Ports attachement initialisation
+   //Pitch servos
+   pinMode(7, OUTPUT);
+   pinMode(6, OUTPUT);
+   rps.attach(7);
+   lps.attach(6);
+   //FPV servos
+   pinMode(9, OUTPUT);
+   pinMode(10, OUTPUT);
+   xFPV.attach(9);
+   yFPV.attach(10);
+   //Motors
+   motorL.attach(12);
+   motorR.attach(13);
+   
+   //Starting position initialisation
+   //Pitch servos 
+   rps.write(90);
+   lps.write(90);
+   //FPV servos
+   xFPV.write(90);
+   yFPV.write(90);
+   //Motors
+   motorL.write(0);
+   motorR.write(0);    
 }
 
-int checkPos(int pos){
-   if(pos<=30){
-      pos=0;
-   }
-   else if(pos>=150){
-      pos=180;
+void setPitch(int LY){
+  int pos=LY;
+  if(pos <= 45){
+     pos=45;
+  }
+  else if(pos >= 135){
+     pos=135; 
+  }
+  
+  Serial.print(" - Pitch : ");
+  Serial.print(pos);
+  lps.write(pos); 
+  rps.write(180-pos);
+}
+
+void setRoll(int LX){
+   if(emergFlag==0){
+      if(LX>95){
+         motorL.write(gas+(((LX-90)/10)*2));
+      }
+      else if(LX<85){
+         motorR.write(gas+(((-LX/10)+9)*2));
+      }
+      else{
+         motorL.write(gas);
+         motorR.write(gas);
+      }
+   
+      Serial.print(" - Gas motor L : ");
+      Serial.print(gas+(((LX-90)/10)*2));
+      Serial.print(" - Gas motor R : ");
+      Serial.println(gas+(((-LX/10)+9)*2));
    }
    else{
-      pos=pos;
+      Serial.print(" - Gas motor L : ");
+      Serial.print(gas);
+      Serial.print(" - Gas motor R : ");
+      Serial.println(gas);
    }
-   
-   return pos;
 }
 
-void lpsMvt(int pos){
-   lps.write(pos); 
+void setYaw(int L1, int R1){
+    if(L1 && !R1){
+       lpsPos--;
+       rpsPos++;
+       lps.write(lpsPos--); 
+       rps.write(rpsPos++);
+    }
+    else if(!L1 && R1){
+       lpsPos++;
+       rpsPos--;
+       lps.write(lpsPos++); 
+       rps.write(rpsPos--);
+      
+    }
 }
 
-void rpsMvt(int pos){
-   
-   rps.write(pos); 
+void setGas(int L2, int R2){
+  if(emergFlag==1){
+    gas=45; //45 corresponding to 0% for my motors
+  }
+  else if(!L2 && R2){
+    if(gas++>=gasMax){
+        gas=gasMax;
+     }
+     else{
+        gas++;
+     }
+  }
+  else if(L2 && !R2){
+     if(gas--<=gasMin){
+        gas=gasMin;
+     }
+     else{
+        gas--;
+     }
+  }
+  else{
+     if(gas<gasNeutral){
+        gas++;
+     }
+     else if(gas>gasNeutral){
+        gas--;
+     }
+  }
 }
 
-void xFPVMvt(int pos){
-   xFPV.write(pos); 
+void setFPV(int RX, int RY){
+   Serial.print("FPV X axis : ");
+   Serial.print(RX);
+   Serial.print(" - FPV Y axis : ");
+   Serial.print(RY);
+   xFPV.write(RX);
+   yFPV.write(RY);
 }
-
-void yFPVMvt(int pos){
-   yFPV.write(pos); 
-}
-
-void gazUp(){
-   if(gaz >= 90){
-      gaz=gaz;
-   }
-   else{
-      gaz++;
-   }
-   
-   motorL.write(gaz);
-   motorR.write(gaz);
-}
-
-void gazDown(){
-   if(gaz <= 0){
-      gaz=gaz;
-   }
-   else{
-      gaz--;
-   }
-   
-   motorL.write(gaz);
-   motorR.write(gaz);
-}
-
-void gazNeutral(){
-   if(gaz<0){
-      gaz++; 
-   }
-   else if(gaz>0){
-      gaz--;
-   }
-   else{
-       gaz=gaz; 
-   }
-      Serial.println(gaz);
-   motorL.write(gaz);
-   motorR.write(gaz);
-}
-
 
 void deserialization(int * bytes){
+   LX = bytes[0];
+   LY = bytes[1];
+   RX = bytes[2];
+   RY = bytes[3];
+   L1 = bytes[4];
+   R1 = bytes[5];
+   L2 = bytes[6];
+   R2 = bytes[7];
+   EMERG = bytes[8];
    
-   
-   int LX = bytes[0];
-   int LY = bytes[1];
-   int RX = bytes[2];
-   int RY = bytes[3];
-   int L1 = bytes[4];
-   int R1 = bytes[5];
-   int L2 = bytes[6];
-   int R2 = bytes[7];
-   int EMERG = bytes[8];
-   
-   rpsMvt(checkPos(rpsPos));
-   lpsMvt(checkPos(lpsPos));
-   
-   if(R1){
-      rpsPos=((180-LY)-20);
-      lpsPos=(LY-20); 
-   }
-   else if(L1){
-      rpsPos=((180-LY)+20);
-      lpsPos=(LY+20);
-   }
-   else{
-      rpsPos=(180-LY);
-      lpsPos=(LY);
-   }
-   
-   xFPVMvt(RX);
-   yFPVMvt(RY);
-   
-   if(L2 == 0 && R2==1){
-      gazUp();
-   }
-   else if(L2 == 1 && R2==0){
-      gazDown(); 
-   }
-   else{
-       gazNeutral(); 
-   }
+   if(EMERG){
+      if(emergFlag==0){
+         emergFlag=1;
+      }
+      else emergFlag=0;
+   } 
+   else{}
+  
+   setGas(L2, R2);
+   setPitch(LY);
+   setRoll(LX);
+   setYaw(L1, R1);
+   setFPV(RX,RY);   
    
 }
 
 void loop() {
-  
-
-     if (Serial.available() > 0) {
-                 
-                incomingByte = Serial.read();
-                if(incomingByte==182){
-                  deserialization(bytes);
-                  packet = 0;
-                }
-                else {
-                   bytes[packet]=incomingByte;
-                   packet++;
-                }
-        }
+   if (Serial.available() > 0) {
+      incomingByte = Serial.read();
+      if(incomingByte==182){
+         deserialization(bytes);
+         packet = 0;
+      }
+      else {
+         bytes[packet]=incomingByte;
+         packet++;
+      }
+   }
 }
