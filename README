@@ -15,3 +15,9 @@ Needed :
 Commit 05/29/12:
  	+ Throttle command frame (PWN)
         + Modification of the PWN ports
+
+Commit 06/15/12:
+	+ Methods reorganization
+	+ Roll method added
+	* Yaw method does not work again
+	* Some trouble with my servos
